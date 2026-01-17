@@ -2,41 +2,56 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Linka 2 - TEST</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Linky 2 - Ostrava</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; background: #121212; color: white; font-family: sans-serif; }
+        #map { height: 70vh; width: 100%; }
+        .info-panel { padding: 15px; text-align: center; }
+        .vuz-label { background: red; color: white; font-weight: bold; padding: 2px 5px; border-radius: 3px; border: 1px solid white; }
+    </style>
 </head>
-<body style="background: #121212; color: white; font-family: sans-serif; padding: 20px;">
-    <h1>Stav Linky 2 (DPO)</h1>
-    <p id="info">Zjišťuji data přes záložní kanál...</p>
-    <div id="vysledek"></div>
+<body>
+    <div class="info-panel">
+        <h1>Živá mapa linky 2</h1>
+        <p id="status">Čekám na uvolnění brány (zkus v 18:40)...</p>
+    </div>
+    <div id="map"></div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        async function testData() {
-            const res = document.getElementById('vysledek');
-            // Zkusíme AllOrigins v "raw" režimu, který je nejagresivnější v získávání dat
+        const map = L.map('map').setView([49.83, 18.27], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        let markers = [];
+
+        async function nactiMapu() {
+            const status = document.getElementById('status');
             const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://mapa.kodis.cz/api/vehicles");
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                
-                // Vyfiltrujeme linku 2
-                const linka2 = data.vehicles.filter(v => v.route_short_name === "2");
-                
-                if (linka2.length > 0) {
-                    let text = "<ul>";
-                    linka2.forEach(v => {
-                        text += `<li><b>Vůz ${v.vehicle_id}</b> - Zpoždění: ${Math.round(v.delay/60)} min.</li>`;
-                    });
-                    res.innerHTML = text + "</ul>";
-                    document.getElementById('info').innerText = "Data načtena v " + new Date().toLocaleTimeString();
-                } else {
-                    res.innerHTML = "Na lince 2 aktuálně nic nejede nebo jsou data nedostupná.";
-                }
+                const vozy = data.vehicles.filter(v => v.route_short_name === "2");
+
+                // Vyčistit staré značky
+                markers.forEach(m => map.removeLayer(m));
+                markers = [];
+
+                vozy.forEach(v => {
+                    const marker = L.marker([v.lat, v.lng]).addTo(map)
+                        .bindPopup(`<b>Vůz ev.č. ${v.vehicle_id}</b><br>Zpoždění: ${Math.round(v.delay/60)} min`);
+                    markers.push(marker);
+                });
+
+                status.innerText = `Na mapě je aktuálně ${vozy.length} vozů linky 2.`;
             } catch (e) {
-                res.innerHTML = "Chyba: Servery jsou momentálně přetížené. Zkus to prosím až po 19:00, až skončí špička.";
+                status.innerText = "Servery jsou stále přetížené. Zkus to prosím později.";
             }
         }
-        testData();
+
+        setInterval(nactiMapu, 45000);
+        nactiMapu();
     </script>
 </body>
 </html>
