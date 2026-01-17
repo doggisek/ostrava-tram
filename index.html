@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Sledování Linky 2 - Ostrava</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; text-align: center; }
+        .kontejner { max-width: 500px; margin: 0 auto; }
+        .vuz { background: #1e1e1e; border-left: 5px solid #d92323; padding: 15px; margin: 15px 0; border-radius: 8px; text-align: left; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .ev-cislo { font-size: 1.2em; font-weight: bold; color: #ff4d4d; }
+        .info { color: #bbb; margin: 5px 0; }
+        .zpozdeni { font-weight: bold; color: #ff4d4d; }
+        .vcas { font-weight: bold; color: #28a745; }
+        #status { font-size: 0.85em; color: #777; margin-bottom: 20px; }
+        button { background: #d92323; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #b01b1b; }
+    </style>
+</head>
+<body>
+
+    <div class="kontejner">
+        <h1>Linka 2 v provozu</h1>
+        <div id="status">Připravuji spojení...</div>
+        <button onclick="nactiData()">Aktualizovat teď</button>
+        <div id="seznam"></div>
+    </div>
+
+    <script>
+        async function nactiData() {
+    const seznam = document.getElementById('seznam');
+    const status = document.getElementById('status');
+    
+    // Použijeme "cors-anywhere" alternativu, která je stavěná na přesměrování
+    const proxy = "https://api.allorigins.win/raw?url=";
+    const target = "https://mapa.kodis.cz/api/vehicles";
+    
+    status.innerText = "Zkouším obejít přesměrování...";
+
+    try {
+        const response = await fetch(proxy + encodeURIComponent(target));
+        if (!response.ok) throw new Error("Server je momentálně obsazen.");
+
+        const data = await response.json();
+        
+        // Hledáme linku 2
+        const vozy = data.vehicles.filter(v => v.route_short_name === "2");
+
+        if (vozy.length === 0) {
+            seznam.innerHTML = "<p>Na lince 2 teď nic nevidím. Zkontroluj výluky na dpo.cz.</p>";
+        } else {
+            let html = "";
+            vozy.forEach(v => {
+                html += `
+                    <div class="vuz">
+                        <div class="ev-cislo">Vůz ev.č. ${v.vehicle_id}</div>
+                        <div class="info">Zastávka: <strong>${v.last_stop_name || "---"}</strong></div>
+                        <div class="info">Zpoždění: ${Math.round(v.delay/60)} min.</div>
+                    </div>`;
+            });
+            seznam.innerHTML = html;
+        }
+        status.innerText = "Aktualizováno: " + new Date().toLocaleTimeString();
+    } catch (error) {
+        console.error(error);
+        status.innerHTML = `<span style="color:red">Stále blokováno. Počkej prosím 15 minut bez klikání.</span>`;
+    }
+}
+
+// Spustit jednou a dost (vypneme automatiku, aby nás neblokovali)
+nactiData();
+    </script>
+</body>
+</html>
